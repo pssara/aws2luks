@@ -140,7 +140,10 @@ partition_target()
         set 1 boot on                                \
         mkpart primary ext2 ${BOOT_SIZE_MB}MiB 100%
 
+    partprobe
+    sleep 5
     mke2fs -q -t $BOOT_FS_TYPE -L $BOOT_LABEL $BOOT_DEVICE
+    
 }
 
 create_luks()
@@ -282,14 +285,19 @@ boot_ssh_setup()
     local initramfs=$WORK_DIR/etc/initramfs-tools
     local aws2luks_lib=$WORK_DIR/$AWS2LUKS_LIB
 
-    mkdir -p $initramfs/root/.ssh
+    #mkdir -p $initramfs/root/.ssh
     mkdir $aws2luks_lib
 
-    create_ssh_key $initramfs/root/.ssh/authorized_keys; chmod -R 0700 $initramfs/root/.ssh
-    create_hook    $initramfs/hooks/aws2luks;            chmod +x $initramfs/hooks/aws2luks
-    create_profile $aws2luks_lib/.profile;               chmod +x $aws2luks_lib/.profile
-    create_unlock  $aws2luks_lib/unlock;                 chmod +x $aws2luks_lib/unlock
-    create_rescue  $aws2luks_lib/rescue;                 chmod +x $aws2luks_lib/rescue
+    #create_ssh_key $initramfs/root/.ssh/authorized_keys; chmod -R 0700 $initramfs/root/.ssh
+    mkdir $WORK_DIR/etc/dropbear
+    mkdir $WORK_DIR/etc/dropbear/initramfs/
+    create_ssh_key $WORK_DIR/etc/dropbear/initramfs/authorized_keys; 
+    #chmod -R 0700 $initramfs/root/.ssh
+    #create_hook    $initramfs/hooks/aws2luks;            chmod +x $initramfs/hooks/aws2luks
+    #create_profile $aws2luks_lib/.profile;               chmod +x $aws2luks_lib/.profile
+    #create_unlock  $aws2luks_lib/unlock;                 chmod +x $aws2luks_lib/unlock
+    #create_rescue  $aws2luks_lib/rescue;                 chmod +x $aws2luks_lib/rescue
+    create_replacekeys $aws2luks_lib/replacekeys; chmod +x $aws2luks_lib/replacekeys
 }
 
 grub_setup()
@@ -318,7 +326,8 @@ fail()
 trap fail ERR INT TERM
 
 apt-get -qq update > /dev/null 2> error.out; rm error.out
-apt-get -qq install busybox dropbear > /dev/null 2> error.out; rm error.out
+apt-get -qq install dropbear-initramfs > /dev/null 2> error.out; rm error.out
+
 
 grub-install $WORK_DEVICE > /dev/null 2> error.out; rm error.out
 update-grub 2> error.out; rm error.out
@@ -407,6 +416,12 @@ fi
 
 . /usr/share/initramfs-tools/hook-functions
 
+echo LALA
+echo \$DESTDIR
+find \$DESTDIR -print
+
+#DROPBEAR_HOME=\$DESTDIR/root
+#mkdir \$DROPBEAR_HOME
 DROPBEAR_HOME=\$(ls -d \$DESTDIR/root-?????? 2> /dev/null || true)
 
 test ! -d "\$DROPBEAR_HOME" && fail "Dropbear home not found"
@@ -486,6 +501,13 @@ rmdir /target || fail
 EOT
 }
 
+create_replacekeys()
+{
+    cat <<EOT > $1
+dropbearconvert openssh dropbear /etc/ssh/ssh_host_ecdsa_key /etc/dropbear/initramfs/dropbear_ecdsa_host_key
+dropbearconvert openssh dropbear /etc/ssh/ssh_host_rsa_key /etc/dropbear/initramfs/dropbear_rsa_host_key
+EOT
+}
 # SNAPSHOT
 
 create_snapshot()
