@@ -18,7 +18,7 @@ sudo apt-get install awscli jq
 
 #### Downloading the files
 ``````
-git clone https://github.com/dzaninov/aws2luks.git
+git clone https://github.com/pssara/aws2luks.git
 ``````
 
 #### Configuration
