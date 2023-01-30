@@ -297,7 +297,7 @@ boot_ssh_setup()
     #create_profile $aws2luks_lib/.profile;               chmod +x $aws2luks_lib/.profile
     #create_unlock  $aws2luks_lib/unlock;                 chmod +x $aws2luks_lib/unlock
     #create_rescue  $aws2luks_lib/rescue;                 chmod +x $aws2luks_lib/rescue
-    create_replacekeys $aws2luks_lib/replacekeys; chmod +x $aws2luks_lib/replacekeys
+    create_synckeys $aws2luks_lib/synckeys; chmod +x $aws2luks_lib/synckeys
 }
 
 grub_setup()
@@ -501,11 +501,16 @@ rmdir /target || fail
 EOT
 }
 
-create_replacekeys()
+create_synckeys()
 {
     cat <<EOT > $1
+ssh-keygen -m PEM -p -f /etc/ssh/ssh_host_ecdsa_key -N ""
+ssh-keygen -m PEM -p -f /etc/ssh/ssh_host_rsa_key -N ""
+ssh-keygen -m PEM -p -f /etc/ssh/ssh_host_ed25519_key -N ""
 dropbearconvert openssh dropbear /etc/ssh/ssh_host_ecdsa_key /etc/dropbear/initramfs/dropbear_ecdsa_host_key
 dropbearconvert openssh dropbear /etc/ssh/ssh_host_rsa_key /etc/dropbear/initramfs/dropbear_rsa_host_key
+dropbearconvert openssh dropbear /etc/ssh/ssh_host_ed25519_key /etc/dropbear/initramfs/dropbear_ed25519_host_key
+update-initramfs -c -k all
 EOT
 }
 # SNAPSHOT
